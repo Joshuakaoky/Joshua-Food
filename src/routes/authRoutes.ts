@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router } from '../lib/miniExpress.js';
 import { signAccessToken } from '../auth/jwt.js';
 import { hashPassword, verifyPassword } from '../auth/password.js';
 import { userRepository } from '../repositories/inMemoryUserRepository.js';

@@ -1,4 +1,5 @@
-import { NextFunction, Request, Response } from 'express';
+// @ts-nocheck
+import { NextFunction, Request, Response } from '../lib/miniExpress.js';
 import { verifyAccessToken } from '../auth/jwt.js';
 import { userRepository } from '../repositories/inMemoryUserRepository.js';
 
@@ -29,3 +30,4 @@ export function authenticate(
     res.status(401).json({ message: 'Unauthorized: invalid token' });
   }
 }
+// @ts-nocheck

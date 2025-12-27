@@ -2,10 +2,11 @@
 一个面向个人的“私房菜”社交点菜工具。每个用户将自家主页公开给访客挑选菜品，系统自动对比库存生成缺失食材清单，方便访客自带。核心功能与数据对象详见《PRODUCT_REQUIREMENTS.md》，技术方案与后端 API 草案见《SYSTEM_DESIGN.md》，实施拆解与里程碑规划见《IMPLEMENTATION_PLAN.md》。
 
 ## 本地快速启动（M0 脚手架）
-1. 安装依赖：`npm install`
+1. 安装依赖：`npm install`（当前依赖全部内置，无需访问外网）
 2. 复制并修改环境变量：`cp .env.example .env`（至少设置 `JWT_SECRET`）
-3. 启动开发服务：`npm run dev`
-4. 健康检查：`GET http://localhost:3000/api/healthz`
+3. 编译：`npm run build`
+4. 启动服务：`npm start`
+5. 健康检查：`GET http://localhost:3000/api/healthz`
 
 ### 可用接口（内存存储，仅示范鉴权流程）
 - `POST /api/auth/register`：`{"name","email","password"}` 创建用户并返回 JWT

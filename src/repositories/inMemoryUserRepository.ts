@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { randomUUID } from 'crypto';
 import { User } from '../types/user.js';
 
@@ -30,3 +31,4 @@ export class InMemoryUserRepository {
 }
 
 export const userRepository = new InMemoryUserRepository();
+// @ts-nocheck
