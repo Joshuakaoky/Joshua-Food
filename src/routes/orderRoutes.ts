@@ -10,8 +10,9 @@ export const orderRoutes = Router();
 
 orderRoutes.get('/orders', authenticate, (req, res) => {
   const all = orderRepository.listByUser(req.user!.id);
-  const asGuest = all.filter((order) => order.guestId === req.user!.id);
-  const asHost = all.filter((order) => order.hostId === req.user!.id);
+  const withEvents = all.map((order) => ({ ...order, events: orderRepository.listEvents(order.id) }));
+  const asGuest = withEvents.filter((order) => order.guestId === req.user!.id);
+  const asHost = withEvents.filter((order) => order.hostId === req.user!.id);
   res.json({ asGuest, asHost });
 });
 
@@ -46,7 +47,7 @@ orderRoutes.post('/orders', authenticate, (req, res) => {
     bringByGuest: bringList.map((item: any) => String(item)),
   });
 
-  res.status(201).json({ order });
+  res.status(201).json({ order: { ...order, events: orderRepository.listEvents(order.id) } });
 });
 
 orderRoutes.patch('/orders/:id/status', authenticate, (req, res) => {
@@ -56,24 +57,47 @@ orderRoutes.patch('/orders/:id/status', authenticate, (req, res) => {
     return;
   }
 
-  const { status, hostNote } = req.body ?? {};
+  const { status, hostNote, note } = req.body ?? {};
   if (!status || !isValidStatus(status)) {
     res.status(400).json({ message: 'status is required and must be valid' });
     return;
   }
 
+  const actorId = req.user!.id;
+  const isHost = order.hostId === actorId;
+  const isGuest = order.guestId === actorId;
+
+  if (!isHost && !isGuest) {
+    res.status(403).json({ message: 'Only host or guest can update this order' });
+    return;
+  }
+
+  if (!isTransitionAllowed(order.status, status as OrderStatus)) {
+    res.status(400).json({ message: `Cannot move from ${order.status} to ${status}` });
+    return;
+  }
+
   if (status === 'CANCELLED') {
-    if (order.hostId !== req.user!.id && order.guestId !== req.user!.id) {
-      res.status(403).json({ message: 'Only host or guest can cancel' });
+    const guestCanCancel = isGuest && ['PENDING', 'REVISION_REQUESTED'].includes(order.status);
+    const hostCanCancel = isHost && ['PENDING', 'ACCEPTED', 'REVISION_REQUESTED'].includes(order.status);
+    if (!guestCanCancel && !hostCanCancel) {
+      res.status(403).json({ message: 'Cancel is not allowed for your role or current status' });
       return;
     }
-  } else if (order.hostId !== req.user!.id) {
+  } else if (!isHost) {
     res.status(403).json({ message: 'Only host can update this order' });
     return;
   }
 
-  const updated = orderRepository.updateStatus(order.id, status as OrderStatus, hostNote);
-  res.json({ order: updated });
+  const eventNote = typeof note === 'string' ? note : typeof hostNote === 'string' ? hostNote : undefined;
+  const updated = orderRepository.updateStatus(
+    order.id,
+    status as OrderStatus,
+    actorId,
+    eventNote,
+    isHost ? hostNote : undefined,
+  );
+  res.json({ order: { ...updated, events: orderRepository.listEvents(order.id) } });
 });
 
 function collectDishes(ids: string[]): { value: Dish[] } | { error: { status: number; message: string } } {
@@ -125,4 +149,16 @@ function isValidStatus(status: string): status is OrderStatus {
     'CANCELLED',
     'COMPLETED',
   ].includes(status);
+}
+
+function isTransitionAllowed(current: OrderStatus, next: OrderStatus): boolean {
+  const transitions: Record<OrderStatus, OrderStatus[]> = {
+    PENDING: ['ACCEPTED', 'REJECTED', 'REVISION_REQUESTED', 'CANCELLED'],
+    ACCEPTED: ['CANCELLED', 'COMPLETED'],
+    REJECTED: [],
+    REVISION_REQUESTED: ['CANCELLED'],
+    CANCELLED: [],
+    COMPLETED: [],
+  };
+  return transitions[current]?.includes(next) ?? false;
 }

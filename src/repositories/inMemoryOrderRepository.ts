@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { randomUUID } from 'crypto';
-import { Order, OrderStatus } from '../types/food.js';
+import { Order, OrderEvent, OrderStatus } from '../types/food.js';
 
 interface CreateOrderInput {
   hostId: string;
@@ -15,6 +15,7 @@ interface CreateOrderInput {
 
 export class InMemoryOrderRepository {
   private orders: Order[] = [];
+  private events: OrderEvent[] = [];
 
   create(input: CreateOrderInput): Order {
     const now = new Date();
@@ -34,6 +35,13 @@ export class InMemoryOrderRepository {
       updatedAt: now,
     };
     this.orders.push(order);
+    this.logEvent({
+      orderId: order.id,
+      actorId: input.guestId,
+      toStatus: order.status,
+      createdAt: now,
+      note: 'Order created',
+    });
     return order;
   }
 
@@ -45,13 +53,30 @@ export class InMemoryOrderRepository {
     return this.orders.find((order) => order.id === id);
   }
 
-  updateStatus(id: string, status: OrderStatus, hostNote?: string): Order | undefined {
+  updateStatus(id: string, status: OrderStatus, actorId: string, note?: string, hostNote?: string): Order | undefined {
     const order = this.findById(id);
     if (!order) return undefined;
+    const previous = order.status;
     order.status = status;
     order.hostNote = hostNote ?? order.hostNote;
     order.updatedAt = new Date();
+    this.logEvent({
+      orderId: order.id,
+      actorId,
+      fromStatus: previous,
+      toStatus: status,
+      createdAt: order.updatedAt,
+      note,
+    });
     return order;
+  }
+
+  listEvents(orderId: string): OrderEvent[] {
+    return this.events.filter((event) => event.orderId === orderId);
+  }
+
+  private logEvent(event: Omit<OrderEvent, 'id'>): void {
+    this.events.push({ ...event, id: randomUUID() });
   }
 }
 

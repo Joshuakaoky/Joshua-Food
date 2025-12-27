@@ -41,6 +41,16 @@ export type OrderStatus =
   | 'CANCELLED'
   | 'COMPLETED';
 
+export interface OrderEvent {
+  id: string;
+  orderId: string;
+  actorId?: string;
+  fromStatus?: OrderStatus;
+  toStatus: OrderStatus;
+  note?: string;
+  createdAt: Date;
+}
+
 export interface Order {
   id: string;
   hostId: string;
@@ -55,4 +65,8 @@ export interface Order {
   status: OrderStatus;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface OrderWithEvents extends Order {
+  events: OrderEvent[];
 }
